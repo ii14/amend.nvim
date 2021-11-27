@@ -18,5 +18,3 @@ can be edited to for example `d6w`.
 ### BUGS
 
 - targets.vim messes up `i/p` commands, like `diw` or `dap`.
-- Something's wrong with the lookup table. Sometimes some nodes are randomly not
-  constructed properly, and as a result some commands are not saved.

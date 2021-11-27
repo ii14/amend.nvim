@@ -24,14 +24,13 @@ local function preprocess(tree)
   -- step 1: expand keys
   local function step1(t)
     if s1[t] then return t end
-    for k, v in pairs(t) do
+    local keys = vim.tbl_keys(t)
+    for _, k in ipairs(keys) do
+      local v = t[k]
       if type(v) == 'table' then
         v = step1(v)
       end
       if type(k) == 'table' then
-        -- TODO: this sometimes just doesn't fucking work
-        -- this isn't called when constructing a table, where order can be random
-        -- is it something with visited tables?
         for _, sk in ipairs(k) do
           t[sk] = v
         end
@@ -117,42 +116,30 @@ local tree = (function()
     ['%d'] = {
       [s('d'..motions)] = true,
       ['g'] = g,
-      ['i'] = ia,
-      ['a'] = ia,
-      [']'] = bs,
-      ['['] = bs,
-      ["'"] = marks,
-      ['`'] = marks,
+      [s'ia'] = ia,
+      [s']['] = bs,
+      [s"'`"] = marks,
     },
     [s('d'..motions)] = true,
     ['g'] = g,
-    ['i'] = ia,
-    ['a'] = ia,
-    [']'] = bs,
-    ['['] = bs,
-    ["'"] = marks,
-    ['`'] = marks,
+    [s'ia'] = ia,
+    [s']['] = bs,
+    [s"'`"] = marks,
   }
 
   local y = preprocess {
     ['%d'] = {
       [s('y'..motions)] = true,
       ['g'] = g,
-      ['i'] = ia,
-      ['a'] = ia,
-      [']'] = bs,
-      ['['] = bs,
-      ["'"] = marks,
-      ['`'] = marks,
+      [s'ia'] = ia,
+      [s']['] = bs,
+      [s"'`"] = marks,
     },
     [s('y'..motions)] = true,
     ['g'] = g,
-    ['i'] = ia,
-    ['a'] = ia,
-    [']'] = bs,
-    ['['] = bs,
-    ["'"] = marks,
-    ['`'] = marks,
+    [s'ia'] = ia,
+    [s']['] = bs,
+    [s"'`"] = marks,
   }
 
   return preprocess {
@@ -182,6 +169,8 @@ end)()
 -- free visited tables
 s1 = nil
 s2 = nil
+
+P(tree)
 
 local MODES = {
   ['n'] = true,
