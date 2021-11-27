@@ -1,6 +1,6 @@
 local M = {}
 
--- TODO: c C s S (save inserted text)
+-- TODO: save inserted text for c/C/s/S
 -- TODO: extensions, somehow. surround, commentary, targets
 -- TODO: figure out what's up with targets.vim and why it's messing up {i,a} commands
 
@@ -53,9 +53,9 @@ local function preprocess(tree)
       end
     end
 
-    local num = t['%d']
+    local num = t['<count>']
     if num then
-      t['%d'] = nil
+      t['<count>'] = nil
 
       num['0'] = num
       num['1'] = num
@@ -111,8 +111,7 @@ local lookup = (function()
   -- g motions
   local g = preprocess {
     [s'geEjkmM0$^_;,'] = true,
-    ["'"] = marks,
-    ['`'] = marks,
+    [s"'`"] = marks,
   }
 
   -- i/a motions
@@ -130,7 +129,7 @@ local lookup = (function()
 
   -- delete command
   local d = preprocess {
-    ['%d'] = {
+    ['<count>'] = {
       [s('d'..motions)] = true,
       ['g'] = g,
       [s'ia'] = ia,
@@ -148,7 +147,7 @@ local lookup = (function()
 
   -- yank command
   local y = preprocess {
-    ['%d'] = {
+    ['<count>'] = {
       [s('y'..motions)] = true,
       ['g'] = g,
       [s'ia'] = ia,
@@ -164,27 +163,50 @@ local lookup = (function()
     [s'fFtT'] = any,
   }
 
+  -- change command
+  -- TODO: save inserted text
+  local c = preprocess {
+    ['<count>'] = {
+      [s('c'..motions)] = true,
+      ['g'] = g,
+      [s'ia'] = ia,
+      [s']['] = bs,
+      [s"'`"] = marks,
+      [s'fFtT'] = any,
+    },
+    [s('c'..motions)] = true,
+    ['g'] = g,
+    [s'ia'] = ia,
+    [s']['] = bs,
+    [s"'`"] = marks,
+    [s'fFtT'] = any,
+  }
+
   return preprocess {
     ['"'] = {
       [regs] = {
-        ['%d'] = {
-          [s'xXDYJ'] = true,
+        ['<count>'] = {
+          [s'xXDYJC'] = true,
           ['d'] = d,
           ['y'] = y,
+          ['c'] = c,
         },
-        [s'xXDYJ'] = true,
+        [s'xXDYJC'] = true,
         ['d'] = d,
         ['y'] = y,
+        ['c'] = c,
       },
     },
-    ['%d'] = {
-      [s'xXDYJ'] = true,
+    ['<count>'] = {
+      [s'xXDYJC'] = true,
       ['d'] = d,
       ['y'] = y,
+      ['c'] = c,
     },
-    [s'xXDYJ'] = true,
+    [s'xXDYJC'] = true,
     ['d'] = d,
     ['y'] = y,
+    ['c'] = c,
   }
 end)()
 
