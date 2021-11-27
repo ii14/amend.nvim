@@ -234,6 +234,11 @@ function _G.amend(args)
     local res = vim.fn.input('Amend: ', last)
     if not res or res == '' then return end
     vim.api.nvim_feedkeys(res, 't', false)
+  elseif args == '?' then
+    if not last then
+      return echoerr('History is empty')
+    end
+    print(last)
   else
     local sign, number = args:match('^%s*([%+%-])%s*(%d*)%s*$')
     if not sign or not number then
