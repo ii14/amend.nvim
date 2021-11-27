@@ -1,6 +1,8 @@
 # amend.nvim
 
-`g.` or `:Amend` to amend and rerun last normal mode command
+Work in progress.
+
+`g.` or `:Amend` to edit and rerun last normal mode command.
 
 For example, if you messed up a count for delete command and deleted too much, like `d7w`,
 you can `u` to undo and then `g.` to put that last command on the command line, where it
