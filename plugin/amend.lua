@@ -235,6 +235,7 @@ vim.on_key(function(char)
   pos = nil
 end)
 
+-- TODO: move everything to lua/
 function _G.amend()
   if not last then
     vim.api.nvim_echo({{'Nothing in history', 'WarningMsg'}}, true, {})
