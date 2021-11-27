@@ -4,13 +4,17 @@ local M = {}
 -- TODO: extensions, somehow. surround, commentary, targets
 -- TODO: figure out what's up with targets.vim and why it's messing up {i,a} commands
 
+
+-- STATE
 -- last action
 local last = nil
 -- buffer
 local buf = nil
--- current position in the tree
-local pos = nil
+-- current node in the tree
+local node = nil
 
+
+-- PARSER LOOKUP TABLE
 -- keep visited tables, so they're preprocessed only once
 local s1 = {}
 local s2 = {}
@@ -95,28 +99,36 @@ local function s(str)
   return res
 end
 
-local tree = (function()
+local lookup = (function()
+  -- registers for "
   local regs = s'"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-*+_/'
 
+  -- marks for '/`/g'/g`
   local marks = preprocess {
     [s'0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]<>\'`"^.(){}'] = true,
   }
 
+  -- g motions
   local g = preprocess {
     [s'geEjkmM0$^_;,'] = true,
     ["'"] = marks,
     ['`'] = marks,
   }
 
+  -- i/a motions
   local ia = preprocess { [s'wWsp][)(b><t}{B"\'`'] = true }
+  -- ]/[ motions
   local bs = preprocess { [s'[]()mM#*/\'`'] = true }
 
+  -- one character motions
   local motions = 'hjklwWbBeEG(){}$^_-+;,HML'
 
+  -- match any character for f/F/t/T
   local function any(char)
     return char:match('%C') ~= nil
   end
 
+  -- delete command
   local d = preprocess {
     ['%d'] = {
       [s('d'..motions)] = true,
@@ -134,6 +146,7 @@ local tree = (function()
     [s'fFtT'] = any,
   }
 
+  -- yank command
   local y = preprocess {
     ['%d'] = {
       [s('y'..motions)] = true,
@@ -179,6 +192,8 @@ end)()
 s1 = nil
 s2 = nil
 
+
+-- PARSER
 local MODES = {
   ['n'] = true,
   ['no'] = true,
@@ -191,52 +206,54 @@ local MODES = {
   ['nt'] = true,
 }
 
-vim.on_key(function(char)
+local function on_key(char)
   -- only insert mode
   if not MODES[vim.api.nvim_get_mode().mode] then
     buf = nil
-    pos = nil
+    node = nil
     return
   end
 
   local m
 
-  if pos ~= nil then
+  if node ~= nil then
     -- there is no way for the nodes at the root to be functions
     -- right now, so this check is only here
-    if type(pos) == 'function' then
-      m = pos(char)
+    if type(node) == 'function' then
+      m = node(char)
     else
-      m = pos[char]
+      m = node[char]
     end
     if m == true then
       last = (buf or '')..char
       buf = nil
-      pos = nil
+      node = nil
       return
     elseif m ~= nil and m ~= false then
       buf = (buf or '')..char
-      pos = m
+      node = m
       return
     end
   end
 
-  m = tree[char]
+  m = lookup[char]
   if m == true then
     last = (buf or '')..char
     buf = nil
-    pos = nil
+    node = nil
     return
   elseif m ~= nil then
     buf = (buf or '')..char
-    pos = m
+    node = m
     return
   end
 
   buf = nil
-  pos = nil
-end)
+  node = nil
+end
 
+
+-- COMMAND
 local function echoerr(msg)
   vim.api.nvim_echo({{'Amend: '..msg, 'ErrorMsg'}}, true, {})
 end
@@ -248,15 +265,18 @@ function _G.amend(args)
   end
 
   if args == '' then
+    -- :Amend
     local res = vim.fn.input('Amend: ', last)
     if not res or res == '' then return end
     vim.api.nvim_feedkeys(res, 't', false)
   elseif args == '?' then
+    -- :Amend?
     if not last then
       return echoerr('History is empty')
     end
     print(last)
   else
+    -- :Amend{count}
     local sign, number = args:match('^%s*([%+%-])%s*(%d*)%s*$')
     if not sign or not number then
       return echoerr('Invalid argument')
@@ -286,6 +306,9 @@ function _G.amend(args)
   end
 end
 
+
+-- SETUP
+vim.on_key(on_key)
 vim.cmd([[command! -nargs=? Amend lua amend(<q-args>)]])
 vim.api.nvim_set_keymap('n', 'g.', '<cmd>Amend<CR>', { noremap = true })
 
