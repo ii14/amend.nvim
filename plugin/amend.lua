@@ -3,8 +3,6 @@ local M = {}
 -- TODO: c C s S (save inserted text)
 -- TODO: f F t T (handle any character)
 -- TODO: extensions, somehow. surround, commentary, targets
--- TODO: quick way to rerun the command with {in,de}cremented count.
---       eg. `g.+`, `g.2-`, or in the form of command, like `:+2Redo`
 -- TODO: figure out what's up with targets.vim and why it's messing up {i,a} commands
 
 -- last action
@@ -222,19 +220,51 @@ vim.on_key(function(char)
   pos = nil
 end)
 
--- TODO: move everything to lua/
-function _G.amend()
-  if not last then
-    vim.api.nvim_echo({{'Nothing in history', 'WarningMsg'}}, true, {})
-    return
-  end
-
-  local res = vim.fn.input('Amend: ', last)
-  if not res or res == '' then return end
-  vim.api.nvim_feedkeys(res, 't', false)
+local function echoerr(msg)
+  vim.api.nvim_echo({{'Amend: '..msg, 'ErrorMsg'}}, true, {})
 end
 
-vim.cmd([[command! Amend lua amend()]])
+-- TODO: move everything to lua/
+function _G.amend(args)
+  if not last then
+    return echoerr('History is empty')
+  end
+
+  if args == '' then
+    local res = vim.fn.input('Amend: ', last)
+    if not res or res == '' then return end
+    vim.api.nvim_feedkeys(res, 't', false)
+  else
+    local sign, number = args:match('^%s*([%+%-])%s*(%d*)%s*$')
+    if not sign or not number then
+      return echoerr('Invalid argument')
+    end
+
+    if number ~= '' then
+      number = tonumber(number)
+    else
+      number = 1
+    end
+    if sign == '-' then
+      number = -number
+    end
+
+    local b, e, m = last:find('(%d+)')
+    if b == nil or e == nil or m == nil then
+      return echoerr('Last command does not have a count')
+    end
+
+    local count = tonumber(m) + number
+    if count < 1 then
+      count = 1
+    end
+
+    local res = last:sub(1, b - 1)..count..last:sub(e + 1)
+    vim.api.nvim_feedkeys(res, 't', false)
+  end
+end
+
+vim.cmd([[command! -nargs=? Amend lua amend(<q-args>)]])
 vim.api.nvim_set_keymap('n', 'g.', '<cmd>Amend<CR>', { noremap = true })
 
 return M
