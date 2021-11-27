@@ -170,8 +170,6 @@ end)()
 s1 = nil
 s2 = nil
 
-P(tree)
-
 local MODES = {
   ['n'] = true,
   ['no'] = true,
