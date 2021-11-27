@@ -1,7 +1,6 @@
 local M = {}
 
 -- TODO: c C s S (save inserted text)
--- TODO: f F t T (handle any character)
 -- TODO: extensions, somehow. surround, commentary, targets
 -- TODO: figure out what's up with targets.vim and why it's messing up {i,a} commands
 
@@ -98,17 +97,25 @@ end
 
 local tree = (function()
   local regs = s'"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-*+_/'
+
   local marks = preprocess {
     [s'0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]<>\'`"^.(){}'] = true,
   }
+
   local g = preprocess {
     [s'geEjkmM0$^_;,'] = true,
     ["'"] = marks,
     ['`'] = marks,
   }
+
   local ia = preprocess { [s'wWsp][)(b><t}{B"\'`'] = true }
   local bs = preprocess { [s'[]()mM#*/\'`'] = true }
+
   local motions = 'hjklwWbBeEG(){}$^_-+;,HML'
+
+  local function any(char)
+    return char:match('%C') ~= nil
+  end
 
   local d = preprocess {
     ['%d'] = {
@@ -117,12 +124,14 @@ local tree = (function()
       [s'ia'] = ia,
       [s']['] = bs,
       [s"'`"] = marks,
+      [s'fFtT'] = any,
     },
     [s('d'..motions)] = true,
     ['g'] = g,
     [s'ia'] = ia,
     [s']['] = bs,
     [s"'`"] = marks,
+    [s'fFtT'] = any,
   }
 
   local y = preprocess {
@@ -132,12 +141,14 @@ local tree = (function()
       [s'ia'] = ia,
       [s']['] = bs,
       [s"'`"] = marks,
+      [s'fFtT'] = any,
     },
     [s('y'..motions)] = true,
     ['g'] = g,
     [s'ia'] = ia,
     [s']['] = bs,
     [s"'`"] = marks,
+    [s'fFtT'] = any,
   }
 
   return preprocess {
@@ -191,13 +202,19 @@ vim.on_key(function(char)
   local m
 
   if pos ~= nil then
-    m = pos[char]
+    -- there is no way for the nodes at the root to be functions
+    -- right now, so this check is only here
+    if type(pos) == 'function' then
+      m = pos(char)
+    else
+      m = pos[char]
+    end
     if m == true then
       last = (buf or '')..char
       buf = nil
       pos = nil
       return
-    elseif m ~= nil then
+    elseif m ~= nil and m ~= false then
       buf = (buf or '')..char
       pos = m
       return

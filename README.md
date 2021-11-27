@@ -16,7 +16,6 @@ decremented count, for example `:Amend+`, `:Amend-`, `:Amend+3`, `:Amend-2`.
 ### TODO
 
 - `c/C/s/S` commands
-- `f/F/t/T` motions
 - Extensions for vim-surround, vim-commentary, targets.vim etc.
 
 ### BUGS
