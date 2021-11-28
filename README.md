@@ -11,6 +11,8 @@ can be edited to for example `d6w`.
 A count after `:Amend` can be given to rerun the last command with incremented or
 decremented count, for example `:Amend+`, `:Amend-`, `:Amend+3`, `:Amend-2`.
 
+`:Amend!` and `:Amend!{count}` will not overwrite the last command.
+
 `:Amend?` prints the last normal command.
 
 ### TODO

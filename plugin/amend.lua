@@ -6,12 +6,14 @@ local M = {}
 
 
 -- STATE
--- last action
-local last = nil
--- buffer
-local buf = nil
--- current node in the tree
+---@type table|function|nil current node in the tree
 local node = nil
+---@type string|nil buffer
+local buf = nil
+---@type string|nil last action
+local last = nil
+---@type string|nil last inserted text
+local insert = nil
 
 
 -- PARSER LOOKUP TABLE
@@ -99,7 +101,7 @@ local function s(str)
   return res
 end
 
-local lookup = (function()
+local LOOKUP = (function()
   -- registers for "
   local regs = s'"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-*+_/'
 
@@ -228,7 +230,10 @@ local MODES = {
   ['nt'] = true,
 }
 
+local skip = false
+
 local function on_key(char)
+  if skip then return end
   -- only insert mode
   if not MODES[vim.api.nvim_get_mode().mode] then
     buf = nil
@@ -239,8 +244,6 @@ local function on_key(char)
   local m
 
   if node ~= nil then
-    -- there is no way for the nodes at the root to be functions
-    -- right now, so this check is only here
     if type(node) == 'function' then
       m = node(char)
     else
@@ -258,13 +261,13 @@ local function on_key(char)
     end
   end
 
-  m = lookup[char]
+  m = LOOKUP[char]
   if m == true then
     last = (buf or '')..char
     buf = nil
     node = nil
     return
-  elseif m ~= nil then
+  elseif m ~= nil and m ~= false then
     buf = (buf or '')..char
     node = m
     return
@@ -281,18 +284,25 @@ local function echoerr(msg)
 end
 
 -- TODO: move everything to lua/
-function _G.amend(args)
-  if not last then
-    return echoerr('History is empty')
-  end
+function _G.amend(args, bang)
+  bang = bang ~= 0
 
   if args == '' then
     -- :Amend
+    if not last then
+      return echoerr('History is empty')
+    end
     local res = vim.fn.input('Amend: ', last)
     if not res or res == '' then return end
+
+    if bang then skip = true end
     vim.api.nvim_feedkeys(res, 't', false)
+    if bang then vim.schedule(function() skip = false end) end
   elseif args == '?' then
     -- :Amend?
+    if bang then
+      return echoerr('Invalid argument')
+    end
     if not last then
       return echoerr('History is empty')
     end
@@ -302,6 +312,10 @@ function _G.amend(args)
     local sign, number = args:match('^%s*([%+%-])%s*(%d*)%s*$')
     if not sign or not number then
       return echoerr('Invalid argument')
+    end
+
+    if not last then
+      return echoerr('History is empty')
     end
 
     if number ~= '' then
@@ -315,6 +329,7 @@ function _G.amend(args)
 
     local b, e, m = last:find('(%d+)')
     if b == nil or e == nil or m == nil then
+      -- TODO: try to add count
       return echoerr('Last command does not have a count')
     end
 
@@ -324,14 +339,17 @@ function _G.amend(args)
     end
 
     local res = last:sub(1, b - 1)..count..last:sub(e + 1)
+
+    if bang then skip = true end
     vim.api.nvim_feedkeys(res, 't', false)
+    if bang then vim.schedule(function() skip = false end) end
   end
 end
 
 
 -- SETUP
 vim.on_key(on_key)
-vim.cmd([[command! -nargs=? Amend lua amend(<q-args>)]])
+vim.cmd([[command! -bang -nargs=? Amend call luaeval('amend(_A[1], _A[2])', [<q-args>, <bang>0])]])
 vim.api.nvim_set_keymap('n', 'g.', '<cmd>Amend<CR>', { noremap = true })
 
 return M
