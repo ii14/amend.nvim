@@ -327,18 +327,21 @@ function _G.amend(args, bang)
       number = -number
     end
 
+    local res
     local b, e, m = last:find('(%d+)')
-    if b == nil or e == nil or m == nil then
-      -- TODO: try to add count
-      return echoerr('Last command does not have a count')
+    if b ~= nil and e ~= nil and m ~= nil then
+      local count = tonumber(m) + number
+      if count < 1 then
+        count = 1
+      end
+      res = last:sub(1, b - 1)..count..last:sub(e + 1)
+    else
+      local count = 1 + number
+      if count < 1 then
+        count = 1
+      end
+      res = count..last
     end
-
-    local count = tonumber(m) + number
-    if count < 1 then
-      count = 1
-    end
-
-    local res = last:sub(1, b - 1)..count..last:sub(e + 1)
 
     if bang then skip = true end
     vim.api.nvim_feedkeys(res, 't', false)
